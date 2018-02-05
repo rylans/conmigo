@@ -4,22 +4,20 @@ import (
   "fmt"
   "os"
   "io/ioutil"
-  "strconv"
-  "time"
+  "strings"
 )
 
-type Task struct {
-  name string
-  createdAt time.Time
+type TaskStore struct {
+  conmigoDir string
+  tasksFile string
 }
 
-func NewTask(name string) Task {
-  return Task{name: name, createdAt: time.Now()}
-}
+func NewTaskStore() *TaskStore {
+  dir := conmigoDirPath()
+  file := conmigoTasksPath()
 
-func (t Task) String() string {
-  ts := strconv.FormatInt(t.createdAt.Unix(), 10)
-  return ts + " " + t.name
+  ensureDirExists()
+  return &TaskStore{conmigoDir: dir, tasksFile: file}
 }
 
 func conmigoDirPath() string {
@@ -37,8 +35,8 @@ func ensureDirExists() {
   }
 }
 
-func writeTask(task Task) {
-  path := conmigoTasksPath()
+func (ts *TaskStore) writeTask(task Task) {
+  path := ts.tasksFile
   if _, err := os.Stat(path); os.IsNotExist(err) {
     err2 := ioutil.WriteFile(path, []byte(""), 0744)
     if err2 != nil {
@@ -57,13 +55,37 @@ func writeTask(task Task) {
   }
 }
 
-func main(){
-  ensureDirExists()
+func (ts *TaskStore) readTasks() []Task {
+  path := ts.tasksFile
+  if _, err := os.Stat(path); os.IsNotExist(err) {
+    panic (err)
+  }
 
-  t := NewTask("my task")
+  dat, err := ioutil.ReadFile(path)
+  if err != nil {
+    panic(err) 
+  }
+
+  tasks := make([]Task, 0)
+  for _, line := range strings.Split(string(dat), "\n") {
+    if line == "" { 
+      continue 
+    }
+    tasks = append(tasks, ValueOf(line))
+  }
+
+  return tasks
+}
+
+func main(){
+  ts := NewTaskStore()
+
+  t := NewTask("clean your room", 12)
   fmt.Println(t)
 
-  writeTask(t)
+  ts.writeTask(t)
+
+  fmt.Println(ts.readTasks())
 
 }
 
