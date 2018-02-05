@@ -2,6 +2,10 @@
 
 conmigo is a task manager 
 
+## Demo
+
+![ttygif](tty.gif)
+
 ## Quick Start
 
 #### Download and install
