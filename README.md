@@ -1,29 +1,30 @@
 # conmigo
-Task manager and time tracker
+
+conmigo is a task manager 
 
 ## Quick Start
 
 #### Download and install
 
-  go get github.com/rylans/conmigo
+    go get github.com/rylans/conmigo
 
 ## Usage
 
 #### Start a new task
 
-  conmigo -start "Buy some eggs"
+    conmigo -start "Buy some eggs"
 
 #### List tasks
 
-  conmigo
+    conmigo
   
 #### Search tasks with regular expressions
 
-  conmigo | grep "keyword"
+    conmigo | grep "keyword"
 
 #### Count open tasks
 
-  conmigo | wc -l
+    conmigo | wc -l
 
 ## License
 
