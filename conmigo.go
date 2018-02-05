@@ -2,10 +2,13 @@ package main
 
 import (
   "fmt"
+  "flag"
   "os"
   "io/ioutil"
   "strings"
 )
+
+const VERSION = "0.0.1"
 
 type TaskStore struct {
   conmigoDir string
@@ -17,6 +20,7 @@ func NewTaskStore() *TaskStore {
   file := conmigoTasksPath()
 
   ensureDirExists()
+  ensureFileExists(file)
   return &TaskStore{conmigoDir: dir, tasksFile: file}
 }
 
@@ -33,6 +37,22 @@ func ensureDirExists() {
   if _, err := os.Stat(dirpath); os.IsNotExist(err) {
     os.Mkdir(dirpath, 0744)
   }
+}
+
+func ensureFileExists(filepath string) {
+  if _, err := os.Stat(filepath); os.IsNotExist(err) {
+    err2 := ioutil.WriteFile(filepath, []byte(""), 0744)
+    if err2 != nil {
+      panic(err2)
+    }
+  }
+}
+
+func (ts *TaskStore) AddTask(summary string) {
+  newtid := maxTaskId(ts.readTasks()) + 1
+
+  task := NewTask(summary, newtid)
+  ts.writeTask(task)
 }
 
 func (ts *TaskStore) writeTask(task Task) {
@@ -77,15 +97,59 @@ func (ts *TaskStore) readTasks() []Task {
   return tasks
 }
 
+func maxTaskId(tasks []Task) int {
+  maxtid := 0
+  for _, t := range (tasks){
+    if t.tid > maxtid {
+      maxtid = t.tid
+    }
+  }
+  return maxtid
+}
+
+func cmdVersion(){
+  fmt.Println("conmigo version", VERSION)
+
+  os.Exit(0)
+}
+
+func cmdStartTask(ts *TaskStore, summary string){
+  ts.AddTask(summary)
+  fmt.Println("Task started:", summary)
+
+  os.Exit(0)
+}
+
+func cmdListTasks(ts *TaskStore) {
+  tasks := ts.readTasks()
+
+  for _, task := range tasks {
+    fmt.Println(task.String())
+  }
+
+  os.Exit(0)
+}
+
 func main(){
+  versionPtr := flag.Bool("v", false, "Print version information and exit")
+  startPtr := flag.Bool("start", false, "Start a new task")
+  flag.Parse()
+
   ts := NewTaskStore()
 
-  t := NewTask("clean your room", 12)
-  fmt.Println(t)
+  if *versionPtr {
+    cmdVersion()
+  } 
+  if *startPtr {
+    args := flag.Args()
+    if len(args) != 1 {
+      fmt.Println("expected one argument after -start. try using quotes")
+      os.Exit(1)
+    }
+    cmdStartTask(ts, args[0])
+  }
 
-  ts.writeTask(t)
-
-  fmt.Println(ts.readTasks())
-
+  // otherwise: list all open tasks
+  cmdListTasks(ts)
 }
 
