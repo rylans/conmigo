@@ -4,7 +4,6 @@ import (
   "fmt"
   "flag"
   "os"
-  "io/ioutil"
   "strings"
 )
 
@@ -19,7 +18,7 @@ func NewTaskStore() *TaskStore {
   dir := conmigoDirPath()
   file := conmigoTasksPath()
 
-  ensureDirExists()
+  ensureDirExists(dir)
   ensureFileExists(file)
   return &TaskStore{conmigoDir: dir, tasksFile: file}
 }
@@ -32,22 +31,6 @@ func conmigoTasksPath() string {
   return conmigoDirPath() + "/.tasks.dat"
 }
 
-func ensureDirExists() {
-  dirpath := conmigoDirPath()
-  if _, err := os.Stat(dirpath); os.IsNotExist(err) {
-    os.Mkdir(dirpath, 0744)
-  }
-}
-
-func ensureFileExists(filepath string) {
-  if _, err := os.Stat(filepath); os.IsNotExist(err) {
-    err2 := ioutil.WriteFile(filepath, []byte(""), 0744)
-    if err2 != nil {
-      panic(err2)
-    }
-  }
-}
-
 func (ts *TaskStore) AddTask(summary string) *Task {
   newtid := maxTaskId(ts.readTasks()) + 1
 
@@ -58,32 +41,13 @@ func (ts *TaskStore) AddTask(summary string) *Task {
 
 func (ts *TaskStore) writeTask(task Task) {
   path := ts.tasksFile
-  if _, err := os.Stat(path); os.IsNotExist(err) {
-    err2 := ioutil.WriteFile(path, []byte(""), 0744)
-    if err2 != nil {
-      panic(err2)
-    }
-  }
-
-  f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
-  if err != nil {
-    panic(err)
-  }
-  defer f.Close()
-
-  if _, err := f.WriteString(task.String() + "\n"); err != nil {
-    panic(err)
-  }
+  ensureFileExists(path)
+  appendToFile(path, task.String())
 }
 
 func (ts *TaskStore) closeTask(taskid int) *Task {
-  dat, err := ioutil.ReadFile(ts.tasksFile)
-  if err != nil {
-    panic(err) 
-  }
-
   linesToWrite := make([]string, 0)
-  lines := strings.Split(string(dat), "\n")
+  lines := strings.Split(readFile(ts.tasksFile), "\n")
 
   foundTask := false
   var task Task
@@ -106,10 +70,7 @@ func (ts *TaskStore) closeTask(taskid int) *Task {
   }
 
   writeThis := strings.Join(linesToWrite, "\n") + "\n"
-  err = ioutil.WriteFile(ts.tasksFile, []byte(writeThis), 0744)
-  if err != nil {
-    panic(err)
-  }
+  replaceFileContents(ts.tasksFile, writeThis)
 
   closedtask := NewTask(task.name, task.tid)
   closedtask.open = false
@@ -120,17 +81,9 @@ func (ts *TaskStore) closeTask(taskid int) *Task {
 
 func (ts *TaskStore) readTasks() []Task {
   path := ts.tasksFile
-  if _, err := os.Stat(path); os.IsNotExist(err) {
-    panic (err)
-  }
-
-  dat, err := ioutil.ReadFile(path)
-  if err != nil {
-    panic(err) 
-  }
 
   tasks := make([]Task, 0)
-  for _, line := range strings.Split(string(dat), "\n") {
+  for _, line := range strings.Split(readFile(path), "\n") {
     if line == "" { 
       continue 
     }
